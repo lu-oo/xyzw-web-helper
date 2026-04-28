@@ -4,106 +4,279 @@
       <!-- Left Column -->
       <div class="left-column">
         <!-- Header -->
-        <div
-          class="page-header"
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-          "
-        >
-          <div style="display: flex; align-items: center; gap: 16px">
-            <h2>批量日常任务</h2>
-            <div
-              style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                padding: 8px 12px;
-                background-color: #f8f9fa;
-                border-radius: 8px;
-                border: 1px solid #e9ecef;
-              "
-            >
-              <div style="font-size: 14px; color: #495057">
-                共 {{ scheduledTasks.length }} 个定时任务
-              </div>
-              <div
-                v-if="shortestCountdownTask"
-                style="font-size: 14px; font-weight: 500; color: #1677ff"
-              >
-                即将执行：{{ shortestCountdownTask.task.name }} ({{
-                  shortestCountdownTask.countdown.formatted
-                }})
-              </div>
-              <div v-else style="font-size: 14px; color: #6c757d">
-                暂无定时任务
-              </div>
-              <div style="display: flex; gap: 8px">
-                <n-button type="primary" size="small" @click="openTaskModal">
-                  新增定时任务
-                </n-button>
-                <n-button size="small" @click="showTasksModal = true">
-                  查看定时任务
-                </n-button>
-                <n-button size="small" @click="exportConfig">
-                  导出配置
-                </n-button>
-                <n-upload
-                  :show-file-list="false"
-                  accept=".json"
-                  :custom-request="importConfig"
+        <div class="mobile-priority-header">
+          <div class="mobile-priority-header__main">
+            <div class="mobile-priority-header__title-block">
+              <div class="mobile-priority-header__title-row">
+                <h2 class="mobile-priority-header__title">批量日常任务</h2>
+                <span
+                  class="mobile-priority-header__state"
+                  :class="{ 'is-running': isRunning }"
                 >
-                  <n-button size="small">导入配置</n-button>
-                </n-upload>
+                  {{ isRunning ? "执行中" : "待执行" }}
+                </span>
+              </div>
+
+              <div class="mobile-priority-header__meta">
+                <span class="mobile-priority-header__meta-item">
+                  已选 {{ selectedTokens.length }} 个账号
+                </span>
+                <span class="mobile-priority-header__meta-item">
+                  {{ scheduledTasks.length }} 个定时任务
+                </span>
+              </div>
+            </div>
+
+            <div class="mobile-priority-header__primary-actions">
+              <div class="mobile-priority-header__primary-action">
+                <n-button
+                  type="primary"
+                  size="small"
+                  @click="startBatch"
+                  :disabled="isRunning || selectedTokens.length === 0"
+                >
+                  {{ isRunning ? "执行中..." : "开始执行" }}
+                </n-button>
+              </div>
+              <div class="mobile-priority-header__primary-action">
+                <n-button
+                  size="small"
+                  type="error"
+                  @click="stopBatch"
+                  :disabled="!isRunning"
+                >
+                  停止
+                </n-button>
               </div>
             </div>
           </div>
-          <div
-            style="
-              display: flex;
-              align-items: center;
-              gap: 12px;
-              padding: 8px 12px;
-              background-color: #f8f9fa;
-              border-radius: 8px;
-              border: 1px solid #e9ecef;
-            "
-          >
-            <n-button
-              type="primary"
-              @click="startBatch"
-              :disabled="isRunning || selectedTokens.length === 0"
-              size="medium"
-            >
-              {{ isRunning ? "执行中..." : "开始执行" }}
-            </n-button>
-            <n-button
-              @click="stopBatch"
-              :disabled="!isRunning"
-              type="error"
-              size="medium"
-            >
-              停止
-            </n-button>
-            <n-button
-              @click="openTemplateManagerModal"
-              type="info"
-              size="medium"
-            >
-              任务模板
-            </n-button>
-            <n-button @click="openBatchSettings" type="default" size="medium">
-              <template #icon>
-                <n-icon>
-                  <Settings />
-                </n-icon>
-              </template>
-              设置
-            </n-button>
+
+          <details class="mobile-priority-header__drawer">
+            <summary class="mobile-priority-header__drawer-summary">
+              <span>调度与设置</span>
+              <span class="mobile-priority-header__drawer-hint">
+                {{
+                  shortestCountdownTask
+                    ? shortestCountdownTask.countdown.formatted
+                    : "暂无定时任务"
+                }}
+              </span>
+            </summary>
+
+            <div class="mobile-priority-header__drawer-content">
+              <div class="mobile-priority-header__drawer-status">
+                <span class="mobile-priority-header__drawer-status-label">
+                  {{ shortestCountdownTask ? "最近执行" : "任务状态" }}
+                </span>
+                <template v-if="shortestCountdownTask">
+                  <strong>{{ shortestCountdownTask.task.name }}</strong>
+                  <span>{{ shortestCountdownTask.countdown.formatted }}</span>
+                </template>
+                <span v-else>暂无定时任务，可按需新增或导入配置。</span>
+              </div>
+
+              <div class="mobile-priority-header__drawer-grid">
+                <div class="mobile-priority-header__drawer-action">
+                  <n-button
+                    type="primary"
+                    size="small"
+                    @click="openTaskModal"
+                  >
+                    新增定时任务
+                  </n-button>
+                </div>
+                <div class="mobile-priority-header__drawer-action">
+                  <n-button size="small" @click="showTasksModal = true">
+                    查看定时任务
+                  </n-button>
+                </div>
+                <div class="mobile-priority-header__drawer-action">
+                  <n-button
+                    size="small"
+                    type="info"
+                    @click="openTemplateManagerModal"
+                  >
+                    任务模板
+                  </n-button>
+                </div>
+                <div class="mobile-priority-header__drawer-action">
+                  <n-button
+                    size="small"
+                    type="default"
+                    @click="openBatchSettings"
+                  >
+                    设置
+                  </n-button>
+                </div>
+                <div class="mobile-priority-header__drawer-action">
+                  <n-button size="small" @click="exportConfig">
+                    导出配置
+                  </n-button>
+                </div>
+                <div class="mobile-priority-header__drawer-action">
+                  <n-upload
+                    class="mobile-priority-header__upload"
+                    :show-file-list="false"
+                    accept=".json"
+                    :custom-request="importConfig"
+                  >
+                    <n-button size="small">导入配置</n-button>
+                  </n-upload>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div class="page-header">
+          <div class="page-header__overview">
+            <section class="page-header__card page-header__card--intro">
+              <div class="page-header__title-wrap">
+                <span class="page-header__eyebrow">任务调度面板</span>
+                <div class="page-header__title-row">
+                  <h2>批量日常任务</h2>
+                  <span class="page-header__task-count">
+                    共 {{ scheduledTasks.length }} 个定时任务
+                  </span>
+                </div>
+                <p class="page-header__description">
+                  集中处理账号选择、定时编排和批量执行，移动端也能更顺手地查看和操作。
+                </p>
+              </div>
+
+              <div class="page-header__quick-stats">
+                <div class="page-header__stat">
+                  <span class="page-header__stat-label">已选账号</span>
+                  <strong class="page-header__stat-value">
+                    {{ selectedTokens.length }}
+                  </strong>
+                </div>
+                <div class="page-header__stat">
+                  <span class="page-header__stat-label">当前状态</span>
+                  <strong
+                    class="page-header__stat-value"
+                    :class="{ 'is-running': isRunning }"
+                  >
+                    {{ isRunning ? "执行中" : "待执行" }}
+                  </strong>
+                </div>
+              </div>
+            </section>
+
+            <section class="page-header__card page-header__card--schedule">
+              <div class="page-header__section-label">定时任务概览</div>
+              <div class="page-header__schedule-content">
+                <div class="page-header__schedule-main">
+                  <div class="page-header__schedule-count">
+                    <span class="page-header__schedule-count-label">
+                      任务总数
+                    </span>
+                    <strong>{{ scheduledTasks.length }}</strong>
+                  </div>
+
+                  <div class="page-header__next-task">
+                    <span class="page-header__next-task-label">
+                      {{ shortestCountdownTask ? "最近执行" : "任务状态" }}
+                    </span>
+                    <template v-if="shortestCountdownTask">
+                      <strong>{{ shortestCountdownTask.task.name }}</strong>
+                      <span class="page-header__next-task-time">
+                        {{ shortestCountdownTask.countdown.formatted }}
+                      </span>
+                    </template>
+                    <span v-else class="page-header__next-task-empty">
+                      暂无定时任务
+                    </span>
+                  </div>
+                </div>
+
+                <div class="header-sub-actions">
+                  <div class="header-sub-action">
+                    <n-button
+                      type="primary"
+                      size="small"
+                      @click="openTaskModal"
+                    >
+                      新增定时任务
+                    </n-button>
+                  </div>
+                  <div class="header-sub-action">
+                    <n-button size="small" @click="showTasksModal = true">
+                      查看定时任务
+                    </n-button>
+                  </div>
+                  <div class="header-sub-action">
+                    <n-button size="small" @click="exportConfig">
+                      导出配置
+                    </n-button>
+                  </div>
+                  <div class="header-sub-action">
+                    <n-upload
+                      class="header-upload"
+                      :show-file-list="false"
+                      accept=".json"
+                      :custom-request="importConfig"
+                    >
+                      <n-button size="small">导入配置</n-button>
+                    </n-upload>
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
+
+          <section class="page-header__card page-header__card--controls">
+            <div class="page-header__section-label">批量执行</div>
+            <p class="page-header__control-description">
+              先选择账号，再开始执行、切换模板或调整批量参数。
+            </p>
+
+            <div class="page-header__primary-actions">
+              <div class="page-header__primary-action">
+                <n-button
+                  type="primary"
+                  @click="startBatch"
+                  :disabled="isRunning || selectedTokens.length === 0"
+                  size="medium"
+                >
+                  {{ isRunning ? "执行中..." : "开始执行" }}
+                </n-button>
+              </div>
+              <div class="page-header__primary-action">
+                <n-button
+                  @click="stopBatch"
+                  :disabled="!isRunning"
+                  type="error"
+                  size="medium"
+                >
+                  停止
+                </n-button>
+              </div>
+              <div class="page-header__primary-action">
+                <n-button
+                  @click="openTemplateManagerModal"
+                  type="info"
+                  size="medium"
+                >
+                  任务模板
+                </n-button>
+              </div>
+              <div class="page-header__primary-action">
+                <n-button
+                  @click="openBatchSettings"
+                  type="default"
+                  size="medium"
+                >
+                  <template #icon>
+                    <n-icon>
+                      <Settings />
+                    </n-icon>
+                  </template>
+                  设置
+                </n-button>
+              </div>
+            </div>
+          </section>
         </div>
 
         <!-- Token Selection -->
@@ -5908,10 +6081,388 @@ const stopBatch = () => {
 }
 
 .page-header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
   align-items: center;
   margin-bottom: 20px;
+}
+
+.mobile-priority-header {
+  display: none;
+}
+
+.mobile-priority-header__main,
+.mobile-priority-header__drawer {
+  border: 1px solid #e7edf4;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.mobile-priority-header__main {
+  padding: 14px;
+  border-radius: 16px;
+}
+
+.mobile-priority-header__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mobile-priority-header__title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.2;
+  color: #1f2937;
+}
+
+.mobile-priority-header__state,
+.mobile-priority-header__meta-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mobile-priority-header__state {
+  background-color: #eef2f7;
+  color: #475467;
+  flex-shrink: 0;
+}
+
+.mobile-priority-header__state.is-running {
+  background-color: rgba(22, 119, 255, 0.12);
+  color: #1677ff;
+}
+
+.mobile-priority-header__meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.mobile-priority-header__meta-item {
+  background-color: #f7f9fc;
+  color: #667085;
+  border: 1px solid #e9eef5;
+}
+
+.mobile-priority-header__primary-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.mobile-priority-header__primary-action,
+.mobile-priority-header__drawer-action {
+  min-width: 0;
+}
+
+.mobile-priority-header__primary-action :deep(.n-button),
+.mobile-priority-header__drawer-action :deep(.n-button),
+.mobile-priority-header__upload,
+.mobile-priority-header__upload :deep(.n-upload-trigger),
+.mobile-priority-header__upload :deep(.n-button) {
+  width: 100%;
+}
+
+.mobile-priority-header__drawer {
+  margin-top: 10px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.mobile-priority-header__drawer-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: #344054;
+}
+
+.mobile-priority-header__drawer-summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-priority-header__drawer-hint {
+  font-size: 12px;
+  font-weight: 500;
+  color: #667085;
+}
+
+.mobile-priority-header__drawer-content {
+  display: grid;
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+
+.mobile-priority-header__drawer-status {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(22, 119, 255, 0.12);
+  background: linear-gradient(135deg, rgba(22, 119, 255, 0.08), rgba(22, 119, 255, 0.02));
+  color: #475467;
+  font-size: 13px;
+}
+
+.mobile-priority-header__drawer-status-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.mobile-priority-header__drawer-status strong {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1f2937;
+}
+
+.mobile-priority-header__drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.page-header__overview {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.95fr);
+  gap: 16px;
+}
+
+.page-header__card {
+  position: relative;
+  min-width: 0;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1px solid #e7edf4;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fafc 100%);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.page-header__card--intro {
+  background:
+    radial-gradient(circle at top right, rgba(22, 119, 255, 0.14), transparent 42%),
+    linear-gradient(135deg, #ffffff 0%, #f7fbff 55%, #edf5ff 100%);
+}
+
+.page-header__card--schedule {
+  display: flex;
+  flex-direction: column;
+}
+
+.page-header__card--controls {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.page-header__title-wrap {
+  position: relative;
+  z-index: 1;
+}
+
+.page-header__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background-color: rgba(22, 119, 255, 0.08);
+  color: #1677ff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.page-header__title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.page-header__title-row h2 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.15;
+  color: #1f2937;
+}
+
+.page-header__task-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(22, 119, 255, 0.14);
+  color: #1677ff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.page-header__description {
+  margin: 10px 0 0;
+  max-width: 520px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #5f6b7a;
+}
+
+.page-header__quick-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.page-header__stat {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background-color: rgba(255, 255, 255, 0.82);
+  border: 1px solid #ecf1f6;
+  backdrop-filter: blur(10px);
+}
+
+.page-header__stat-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #7b8794;
+}
+
+.page-header__stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.page-header__stat-value.is-running {
+  color: #1677ff;
+}
+
+.page-header__section-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #7b8794;
+  letter-spacing: 0.5px;
+}
+
+.page-header__schedule-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.page-header__schedule-main {
+  display: grid;
+  gap: 12px;
+}
+
+.page-header__schedule-count {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #edf2f7;
+  background-color: #ffffff;
+}
+
+.page-header__schedule-count-label {
+  font-size: 13px;
+  color: #667085;
+}
+
+.page-header__schedule-count strong {
+  font-size: 28px;
+  line-height: 1;
+  color: #111827;
+}
+
+.page-header__next-task {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(22, 119, 255, 0.14);
+  background: linear-gradient(135deg, rgba(22, 119, 255, 0.08), rgba(22, 119, 255, 0.02));
+}
+
+.page-header__next-task-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.page-header__next-task strong {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #1f2937;
+  word-break: break-word;
+}
+
+.page-header__next-task-time {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1677ff;
+}
+
+.page-header__next-task-empty {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.header-sub-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.header-sub-action,
+.page-header__primary-action {
+  min-width: 0;
+}
+
+.header-sub-action :deep(.n-button),
+.header-upload,
+.header-upload :deep(.n-upload-trigger),
+.header-upload :deep(.n-button),
+.page-header__primary-action :deep(.n-button) {
+  width: 100%;
+}
+
+.page-header__control-description {
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #5f6b7a;
+}
+
+.page-header__primary-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
 }
 
 .token-item {
@@ -6097,12 +6648,31 @@ const stopBatch = () => {
   .right-column {
     width: 380px;
   }
+
+  .page-header {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 992px) {
   .batch-daily-tasks {
     height: auto;
     overflow: visible;
+  }
+
+  .mobile-priority-header {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin-bottom: 14px;
+    padding-bottom: 4px;
+    background: linear-gradient(180deg, rgba(245, 247, 250, 0.96), rgba(245, 247, 250, 0.82));
+    backdrop-filter: blur(12px);
+  }
+
+  .page-header {
+    display: none;
   }
 
   .main-layout {
@@ -6126,12 +6696,17 @@ const stopBatch = () => {
     height: 300px;
     min-height: 300px;
   }
+
+  .page-header__overview {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
   .batch-daily-tasks {
     padding: 12px;
-    height: 100vh;
+    height: auto;
+    min-height: 100vh;
     overflow-y: auto;
     overflow-x: hidden;
   }
@@ -6156,14 +6731,46 @@ const stopBatch = () => {
   }
 
   .page-header {
-    flex-direction: column;
     gap: 12px;
-    align-items: stretch;
+    margin-bottom: 16px;
   }
 
-  .page-header .actions {
-    display: flex;
-    gap: 8px;
+  .mobile-priority-header__main {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .mobile-priority-header__drawer {
+    border-radius: 12px;
+  }
+
+  .mobile-priority-header__drawer-summary,
+  .mobile-priority-header__drawer-content {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .page-header__card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .page-header__title-row h2 {
+    font-size: 24px;
+  }
+
+  .page-header__quick-stats {
+    grid-template-columns: 1fr;
+    margin-top: 16px;
+  }
+
+  .page-header__schedule-count {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-header__primary-actions {
+    margin-top: 16px;
   }
 
   .log-card {
@@ -6186,6 +6793,11 @@ const stopBatch = () => {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
+  }
+
+  .header-sub-actions,
+  .page-header__primary-actions {
+    grid-template-columns: 1fr 1fr;
   }
 
   /* 批量功法残卷赠送样式 */
@@ -6241,6 +6853,35 @@ const stopBatch = () => {
 
   /* 响应式设计 */
   @media (max-width: 600px) {
+    .mobile-priority-header__title-row {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .mobile-priority-header__primary-actions,
+    .mobile-priority-header__drawer-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .mobile-priority-header__drawer-summary {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .page-header__title-row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .page-header__description {
+      max-width: none;
+    }
+
+    .header-sub-actions,
+    .page-header__primary-actions {
+      grid-template-columns: 1fr;
+    }
+
     .recipient-info {
       flex-direction: column;
       align-items: center;
